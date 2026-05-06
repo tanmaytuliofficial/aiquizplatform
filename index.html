@@ -1119,7 +1119,7 @@ For True/False, options should be ["A. True", "B. False"] and answer should be "
 Generate exactly ${count} questions. Return ONLY the JSON array.`;
 
   try {
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const response = await fetch('https://nvidia-proxy.tanmaytulivlogs.workers.dev', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -1379,7 +1379,7 @@ async function generateInsights(r) {
 Give 3-4 specific, actionable study tips in 2-3 sentences total. Be encouraging but honest. Focus on improvement strategies. Keep it concise.`;
 
   try {
-    const response = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const response = await fetch('https://nvidia-proxy.tanmaytulivlogs.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + state.apiKey },
       body: JSON.stringify({ model: 'meta/llama-3.1-70b-instruct', messages: [{ role: 'user', content: prompt }], max_tokens: 300 })
@@ -1734,7 +1734,7 @@ async function testApiKey() {
   if (!key) { showToast('Enter API key first', 'error'); return; }
   showLoading('Testing API...', 'Connecting to NVIDIA NIM');
   try {
-    const r = await fetch('https://integrate.api.nvidia.com/v1/chat/completions', {
+    const r = await fetch('https://nvidia-proxy.tanmaytulivlogs.workers.dev', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + key },
       body: JSON.stringify({ model: 'meta/llama-3.1-70b-instruct', messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 5 })
