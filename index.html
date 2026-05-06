@@ -7,6 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root {
     --bg: #0a0a0f;
@@ -1032,19 +1033,96 @@ function handleFileUpload(input) {
   if (input.files[0]) processFile(input.files[0]);
 }
 
-function processFile(file) {
+async function processFile(file) {
   const maxSize = 10 * 1024 * 1024;
-  if (file.size > maxSize) { showToast('File too large (max 10MB)', 'error'); return; }
+
+  if (file.size > maxSize) {
+    showToast('File too large (max 10MB)', 'error');
+    return;
+  }
+
   document.getElementById('file-name').textContent = file.name;
-  document.getElementById('file-size').textContent = '(' + (file.size / 1024).toFixed(1) + ' KB)';
+  document.getElementById('file-size').textContent =
+    '(' + (file.size / 1024).toFixed(1) + ' KB)';
   document.getElementById('file-preview').style.display = 'block';
-  const reader = new FileReader();
-  reader.onload = e => {
-    state.uploadedText = e.target.result;
-    document.getElementById('paste-text').value = '';
-    showToast('File loaded: ' + file.name, 'success');
-  };
-  reader.readAsText(file);
+
+  // PDF FILE
+  if (file.type === "application/pdf") {
+
+    showLoading("Reading PDF...", "Extracting study material");
+
+    try {
+
+      const arrayBuffer = await file.arrayBuffer();
+
+      const pdf = await pdfjsLib.getDocument({
+        data: arrayBuffer
+      }).promise;
+
+      let fullText = '';
+
+      for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+
+        const page = await pdf.getPage(pageNum);
+
+        const textContent = await page.getTextContent();
+
+        const pageText = textContent.items
+          .map(item => item.str)
+          .join(' ');
+
+        fullText += pageText + '\n';
+      }
+
+      state.uploadedText = fullText;
+
+      console.log("PDF TEXT:", fullText);
+
+      document.getElementById('paste-text').value = '';
+
+      hideLoading();
+
+      showToast(
+        'PDF processed successfully!',
+        'success'
+      );
+
+    } catch (err) {
+
+      hideLoading();
+
+      console.error(err);
+
+      showToast(
+        'Failed to read PDF',
+        'error'
+      );
+    }
+
+  } else {
+
+    // NORMAL TEXT FILES
+    const reader = new FileReader();
+
+    reader.onload = e => {
+
+      state.uploadedText = e.target.result;
+
+      console.log(
+        "TEXT CONTENT:",
+        state.uploadedText
+      );
+
+      document.getElementById('paste-text').value = '';
+
+      showToast(
+        'File loaded successfully!',
+        'success'
+      );
+    };
+
+    reader.readAsText(file);
+  }
 }
 
 // ═══════════════════════════════════════════
@@ -1088,17 +1166,17 @@ async function generateQuiz() {
 
   showLoading('Generating ' + count + ' Questions...', 'NVIDIA ' + model.split('/')[1]);
 
-  const textSample = state.uploadedText.slice(0, 6000);
+  const textSample = state.uploadedText.slice(0, 15000);
   const typeInstr = type === 'mcq' ? 'Multiple Choice (4 options A,B,C,D)' : type === 'truefalse' ? 'True/False (only 2 options)' : 'Mix of Multiple Choice and True/False';
   const topicInstr = topics ? 'Focus on these topics: ' + topics + '.' : 'Choose the most important topics from the content.';
 
   const prompt = `You are a quiz generator. Based on the study material below, generate exactly ${count} questions.
 
 REQUIREMENTS:
-- Difficulty: ${diff}
-- Question Type: ${typeInstr}
-- Language: ${lang}
-- ${topicInstr}
+IMPORTANT:
+- Generate questions STRICTLY AND ONLY from the provided study material.
+- Do NOT generate generic or unrelated questions.
+- If the study material is about English phrasal verbs, all questions must be about phrasal verbs only.
 
 STUDY MATERIAL:
 ${textSample}
